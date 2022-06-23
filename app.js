@@ -60,7 +60,7 @@ app.get('/employee',authenticateToken,(req, res) => {
 })
 
 // get employee
-app.get('/employee/:uid',(req, res) => {
+app.get('/employee/:uid',authenticateToken,(req, res) => {
     if(req.user.email === "admin@admin.org"){
     employeeModel.findById(req.params.uid).then(re => {
         if(re.Status == false){
@@ -88,14 +88,16 @@ app.post('/employee',authenticateToken, (req, res)=> {
 // update employee 
 app.put('/employee/:uid', (req, res) => {
     
-    if(req.user.email === "admin@admin.org"){
+    // if(req.user.email === "admin@admin.org"){
     employeeModel.findOneAndUpdate({_id : req.params.uid}, req.body, {upsert: true}, function(err, doc) {
         if (err) return res.send(500, {error: err});
-        return res.send(doc)
+        return  employeeModel.findById(req.params.uid).then(re => {
+                res.send(re)
+        })
     });
-}else{
-    res.send('unauthorized')
-}
+// }else{
+//     res.send('unauthorized')
+// }
 })
 // delete employee
 app.delete('/employee/:uid',authenticateToken, (req, res) =>{
