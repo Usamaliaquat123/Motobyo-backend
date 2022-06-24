@@ -21,10 +21,7 @@ const authenticateToken = (req,res,next) => {
     const authHeader  = req.headers['authorization']
     const token = authHeader && authHeader.split(' ')[1]
     if(token == null) return res.sendStatus(401)
-
-
     jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, user)=> {
-        console.log(user)
         if(err) return res.sendStatus(403)
         req.user = user
         next()
@@ -32,86 +29,96 @@ const authenticateToken = (req,res,next) => {
 }
 
 
+
+
 app.post('/user', (req, res) => {
-    
-    if(req.body.email === "admin@admin.org"){
-        const user = {
-            email : req.body.email,
-            password : req.body.password,
+    employeeModel.userModel.find(req.body).then(re => {
+        if(re.length != 0){
+            const user = {
+                email : req.body.email,
+                password : req.body.password,
+            }
+            const accessToken =  jwt.sign(user, process.env.ACCESS_TOKEN_SECRET)
+            res.json({ accessToken :accessToken })
+        }else{
+            res.send('Invalid User')
+
         }
 
-        const accessToken =  jwt.sign(user, process.env.ACCESS_TOKEN_SECRET)
-        res.json({ accessToken :accessToken })
-    }else{
+    }).catch(err => {
+        console.log(err)
         res.send('Invalid User')
-    }
+    })
 
 })
 
 // get all employee
 app.get('/employee',authenticateToken,(req, res) => {
-    if(req.user.email === "admin@admin.org"){
-        employeeModel.find({}).then(re => {
+    employeeModel.userModel.find({ email  : req.body.email}).then(() => {
+        employeeModel.employeeModel.find({}).then(re => {
             res.send(re.filter(d => d.Status == true))
         })
-    }else{
+    }).catch(err => {
         res.send('unauthorized')
-    }
+    })
 })
 
 // get employee
 app.get('/employee/:uid',authenticateToken,(req, res) => {
-    if(req.user.email === "admin@admin.org"){
-    employeeModel.findById(req.params.uid).then(re => {
-        if(re.Status == false){
-            res.send('user not found')
-        }else{
-            res.send(re)
-        }
+    employeeModel.userModel.find({ email  : req.user.email}).then(() => {
+        employeeModel.employeeModel.findById(req.params.uid).then(re => {
+            if(re.Status == false){
+                res.send('user not found')
+            }else{
+                res.send(re)
+            }
+        })
+
+    }).catch(err => {
+        res.send('unauthorized')
+
     })
-}else{
-    res.send('unauthorized')
-}
+  
+
 })
 
 // create new employee
-app.post('/employee',authenticateToken, (req, res)=> {
-    if(req.user.email === "admin@admin.org"){
-    const employee = new employeeModel(req.body);
-    employee.save().then((re) => res.send(re)).catch(err => res.sendStatus(err))
+app.post('/employee', (req, res)=> {
+    employeeModel.userModel.find({ email  : req.user.email}).then(res => 
+        {
+            const employee = new employeeModel.employeeModel(req.body);
+            employee.save().then((re) => res.send(re)).catch(err => res.sendStatus(err))
 
-    }else{
+        }).catch(err => {
         res.send('unauthorized')
-    }
+    })
 })
 
 // update employee 
 app.put('/employee/:uid', (req, res) => {
-    
-    // if(req.user.email === "admin@admin.org"){
-    employeeModel.findOneAndUpdate({_id : req.params.uid}, req.body, {upsert: true}, function(err, doc) {
+    employeeModel.employeeModel.findOneAndUpdate({_id : req.params.uid}, req.body, {upsert: true}, function(err, doc) {
         if (err) return res.send(500, {error: err});
-        return  employeeModel.findById(req.params.uid).then(re => {
+        return  employeeModel.employeeModel.findById(req.params.uid).then(re => {
                 res.send(re)
         })
     });
-// }else{
-//     res.send('unauthorized')
-// }
 })
 // delete employee
 app.delete('/employee/:uid',authenticateToken, (req, res) =>{
-    if(req.user.email === "admin@admin.org"){
-employeeModel.findOneAndUpdate({_id : req.params.uid}, {Status : false}, {upsert: true}, function(err, doc) {
-    if (err) return res.send(500, {error: err});
-    return employeeModel.find({}).then(re => {
-        res.send(re.filter(d => d.Status == true))
-    })
-});
 
-}else{
-    res.send('unauthorized')
-}
+
+    employeeModel.userModel.find({ email  : req.user.email}).then(() => {
+        employeeModel.employeeModel.findOneAndUpdate({_id : req.params.uid}, {Status : false}, {upsert: true}, function(err, doc) {
+        if (err) return res.send(500, {error: err});
+        return employeeModel.employeeModel.find({}).then(re => {
+            res.send(re.filter(d => d.Status == true))
+        })
+    });}).catch(err => {
+        res.send('unauthorized')
+    })
+
+
+  
 })
 
 

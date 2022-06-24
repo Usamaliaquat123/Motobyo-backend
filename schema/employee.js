@@ -10,5 +10,9 @@ const employee = new Schema({
     DateOfEmployment : String,
     Status : Boolean
 })
+const user = new Schema({ 
+    email : String,
+    password : String
+})
 
-module.exports = employee
+module.exports = { employee, user }
